@@ -49,6 +49,8 @@ def test_analyze_max_sharpe(mock_market_data):
     data = response.json()
     assert "weights" in data
     assert "performance" in data
+    assert max(data["weights"].values()) <= 0.4
+    assert "constraints" in data
 
 def test_analyze_hrp(mock_market_data):
     response = client.post("/api/analyze", json={
@@ -72,6 +74,20 @@ def test_analyze_black_litterman(mock_market_data):
     assert response.status_code == 200
     data = response.json()
     assert "weights" in data
+
+def test_analyze_includes_unallocated_when_cap_infeasible(mock_market_data):
+    response = client.post("/api/analyze", json={
+        "tickers": ["AAPL", "MSFT"],
+        "start_date": "2023-01-01",
+        "end_date": "2023-01-03",
+        "strategy": "max_sharpe",
+        "investment_amount": 10000
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert data["constraints"]["max_single_asset_weight"] == 0.4
+    assert data["constraints"]["total_invested_weight"] <= 1.0
+    assert data["constraints"]["unallocated_amount"] >= 0.0
 
 def test_simulate(mock_market_data):
     # Mocking MeanHistoricalReturnCalculator and SampleCovarianceCalculator inside main

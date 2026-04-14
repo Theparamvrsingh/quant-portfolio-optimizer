@@ -22,9 +22,43 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+MAX_SINGLE_ASSET_WEIGHT = 0.40
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+def enforce_max_asset_weight(weights: Dict[str, float], max_weight: float) -> Dict[str, float]:
+    """
+    Enforce a max cap per asset and redistribute excess to unconstrained assets.
+    If redistribution is not fully possible, total weight can remain < 1.0.
+    """
+    current_weights = {ticker: float(weight) for ticker, weight in weights.items()}
+
+    for _ in range(100):
+        excess_weight = 0.0
+        violations = False
+
+        for ticker, weight in current_weights.items():
+            if weight > max_weight:
+                excess_weight += weight - max_weight
+                current_weights[ticker] = max_weight
+                violations = True
+
+        if not violations and excess_weight < 1e-9:
+            break
+
+        eligible = [t for t, w in current_weights.items() if w < max_weight - 1e-9]
+        eligible_total = sum(current_weights[t] for t in eligible)
+
+        if not eligible or eligible_total <= 0:
+            break
+
+        for ticker in eligible:
+            share = current_weights[ticker] / eligible_total
+            current_weights[ticker] += excess_weight * share
+
+    return {ticker: round(weight, 5) for ticker, weight in current_weights.items()}
 
 class TickerRequest(BaseModel):
     tickers: List[str]
@@ -89,6 +123,10 @@ async def analyze_portfolio(request: TickerRequest):
             cleaned_weights = ef.calculate_efficient_frontier_weights(risk_free_rate=request.risk_free_rate)
             performance = ef.calculate_efficient_frontier_performance(risk_free_rate=request.risk_free_rate)
 
+        cleaned_weights = enforce_max_asset_weight(cleaned_weights, MAX_SINGLE_ASSET_WEIGHT)
+        total_invested_weight = float(sum(cleaned_weights.values()))
+        unallocated_weight = max(0.0, 1.0 - total_invested_weight)
+
         # Calculate Sortino Ratio
         # Sortino = (R - Rf) / Downside Deviation
         # We need daily returns for this
@@ -133,7 +171,13 @@ async def analyze_portfolio(request: TickerRequest):
             "allocation": {
                 ticker: weight * request.investment_amount 
                 for ticker, weight in cleaned_weights.items() if weight > 0
-            }
+            },
+            "constraints": {
+                "max_single_asset_weight": MAX_SINGLE_ASSET_WEIGHT,
+                "total_invested_weight": total_invested_weight,
+                "unallocated_weight": unallocated_weight,
+                "unallocated_amount": unallocated_weight * request.investment_amount
+            },
         }
         
         return response_data

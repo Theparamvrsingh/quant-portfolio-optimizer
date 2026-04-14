@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('optimizer-form');
     const analyzeBtn = document.getElementById('analyze-btn');
     const resultsSection = document.getElementById('results-section');
+    const constraintsSummary = document.getElementById('constraints-summary');
 
 
 
@@ -235,6 +236,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayResults(data) {
         resultsSection.classList.remove('hidden');
 
+        if (data.constraints) {
+            const unallocatedPct = (data.constraints.unallocated_weight * 100).toFixed(2);
+            const unallocatedAmt = data.constraints.unallocated_amount.toFixed(2);
+            if (data.constraints.unallocated_weight > 0.0001) {
+                constraintsSummary.classList.remove('hidden');
+                constraintsSummary.textContent = `Max ${Math.round(data.constraints.max_single_asset_weight * 100)}% per-asset cap applied. ${unallocatedPct}% ($${unallocatedAmt}) remains unallocated to preserve constraints.`;
+            } else {
+                constraintsSummary.classList.add('hidden');
+                constraintsSummary.textContent = '';
+            }
+        } else {
+            constraintsSummary.classList.add('hidden');
+            constraintsSummary.textContent = '';
+        }
+
         // Metrics
         document.getElementById('expected-return').textContent = (data.performance.expected_return * 100).toFixed(2) + '%';
         document.getElementById('volatility').textContent = (data.performance.volatility * 100).toFixed(2) + '%';
@@ -293,8 +309,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     data: filtered.map(item => item.value),
                     backgroundColor: [
-                        '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-                        '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#64748b'
+                        '#3b82f6', '#0ea5e9', '#14b8a6', '#5dd3a6', '#f59e0b',
+                        '#f97316', '#ef4444', '#a78bfa', '#f472b6', '#94a3b8'
                     ],
                     borderWidth: 0
                 }]
@@ -305,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 plugins: {
                     legend: {
                         position: 'right',
-                        labels: { color: '#f8fafc' }
+                        labels: { color: '#e6edf5' }
                     }
                 }
             }
@@ -336,8 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     {
                         label: 'Median (Expected)',
                         data: data.p50,
-                        borderColor: '#6366f1', // Blue
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderColor: '#3b82f6', // Blue
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         fill: false,
                         tension: 0.1,
                         pointRadius: 0
@@ -358,24 +374,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        labels: { color: '#f8fafc' }
+                        labels: { color: '#e6edf5' }
                     },
                     title: {
                         display: true,
                         text: `Projected Value: $${data.final_mean.toFixed(0)} (Range: $${data.final_min.toFixed(0)} - $${data.final_max.toFixed(0)})`,
-                        color: '#94a3b8'
+                        color: '#9fb1c6'
                     }
                 },
                 scales: {
                     x: {
-                        title: { display: true, text: 'Trading Days', color: '#94a3b8' },
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: '#334155' }
+                        title: { display: true, text: 'Trading Days', color: '#9fb1c6' },
+                        ticks: { color: '#9fb1c6' },
+                        grid: { color: '#22384d' }
                     },
                     y: {
-                        title: { display: true, text: 'Portfolio Value ($)', color: '#94a3b8' },
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: '#334155' }
+                        title: { display: true, text: 'Portfolio Value ($)', color: '#9fb1c6' },
+                        ticks: { color: '#9fb1c6' },
+                        grid: { color: '#22384d' }
                     }
                 }
             }

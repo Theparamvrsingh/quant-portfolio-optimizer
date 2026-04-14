@@ -12,9 +12,13 @@
 
 <body>
     <div class="container">
+        <div class="top-bar">
+            <span class="badge">Institutional Portfolio Analytics</span>
+            <span class="badge badge-muted">Built for finance workflows</span>
+        </div>
         <header>
             <h1>Portfolio Optimizer</h1>
-            <p>Optimize your investments with the power of AI and Modern Portfolio Theory.</p>
+            <p>Institutional-style portfolio optimization with modern risk analytics.</p>
         </header>
 
         <main>
@@ -119,6 +123,7 @@
             <section id="results-section" class="hidden">
                 <div class="card metrics-card">
                     <h2>Performance Metrics</h2>
+                    <div id="constraints-summary" class="constraints-summary hidden"></div>
                     <div class="metrics-grid">
                         <div class="metric-item">
                             <span class="metric-label">Expected Return</span>
