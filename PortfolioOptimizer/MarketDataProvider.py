@@ -1,0 +1,73 @@
+import logging
+import yfinance as yf
+import pandas as pd
+from typing import List
+
+
+class MarketDataProvider:
+
+    @staticmethod
+    def get_data(tickers: List, start_date: str = None, end_date: str = None, period: str = None,
+                 frequency: str = 'Adj Close', return_updated_tickers: bool = False):
+        """
+        Fetches stock market data for specified tickers using Yahoo Finance API.
+
+            :param return_updated_tickers:
+            :param tickers: A list of stock ticker symbols or a single ticker symbol as string.
+            :param start_date: The start date for data fetching in 'YYYY-MM-DD' format.
+            :param end_date: The end date for data fetching in 'YYYY-MM-DD' format.
+            :param period: The period for data fetching as a string. Overrides start_date and end_date if provided.
+                           Examples of valid periods include '1d', '1mo', '1y', etc.
+            :param frequency: The data frequency to fetch. Default is 'Adj Close', but can be any column name returned by
+                              yfinance such as 'Open', 'Close', 'High', 'Low', 'Volume'.
+            :return: A pandas DataFrame containing the fetched data with dates as index and tickers as columns.
+        """
+        valid_tickers = []
+        for ticker in tickers:
+            stock_data = yf.Ticker(ticker)
+            # Check if the ticker has historical data as a proxy for validation
+            if not stock_data.history(period="1mo").empty:
+                valid_tickers.append(ticker)
+            else:
+                print(f"Ticker {ticker} is not valid or delisted.")
+
+        try:
+            # Decide whether to use period or start and end dates
+            try:
+                if period:
+                    data = yf.download(valid_tickers, period=period, auto_adjust=False)
+                else:
+                    if not start_date or not end_date:
+                        raise ValueError("Start date and end date must be specified if not using period.")
+                    data = yf.download(valid_tickers, start=start_date, end=end_date, auto_adjust=False)
+            except Exception as e:
+                print(f"Error downloading data: {e}")
+                return (pd.DataFrame(), []) if return_updated_tickers else pd.DataFrame()
+
+            if data.empty:
+                return (pd.DataFrame(), []) if return_updated_tickers else pd.DataFrame()
+
+            if return_updated_tickers:
+                return data[frequency], valid_tickers
+            else:
+                return data[frequency]
+        except Exception as e:
+            logging.error(f"Error fetching data for {valid_tickers} from {start_date} to {end_date}: {e}")
+            raise
+
+    @staticmethod
+    def get_asset_names(tickers: List[str]) -> dict:
+        """
+        Fetches the full name (longName) for a list of tickers.
+        Returns a dictionary {ticker: full_name}.
+        """
+        names = {}
+        for ticker in tickers:
+            try:
+                info = yf.Ticker(ticker).info
+                # Try longName, then shortName, then fallback to ticker
+                names[ticker] = info.get('longName') or info.get('shortName') or ticker
+            except Exception as e:
+                logging.warning(f"Could not fetch name for {ticker}: {e}")
+                names[ticker] = ticker
+        return names
